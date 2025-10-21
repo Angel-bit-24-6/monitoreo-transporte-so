@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Monitoreo de Transporte</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Hamburger Menu Button (solo visible en móviles) */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 2000;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: background-color 0.3s;
+        }
+
+        .menu-toggle:hover {
+            background-color: #34495e;
+        }
+
+        .menu-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background-color: #34495e;
+            border-bottom: 2px solid #1abc9c;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.85rem;
+            color: #bdc3c7;
+        }
+
+        .connection-status {
+            padding: 15px 20px;
+            background-color: #34495e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #e74c3c;
+        }
+
+        .status-dot.connected {
+            background-color: #2ecc71;
+        }
+
+        .units-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .unit-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #34495e;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .unit-item:hover {
+            background-color: #34495e;
+        }
+
+        .unit-item.active {
+            background-color: #1abc9c;
+        }
+
+        .unit-item.offline {
+            opacity: 0.6;
+        }
+
+        .unit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .unit-id {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .unit-status {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background-color: #e74c3c;
+        }
+
+        .unit-status.online {
+            background-color: #2ecc71;
+        }
+
+        .unit-info {
+            font-size: 0.85rem;
+            color: #bdc3c7;
+        }
+
+        .unit-speed {
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Events Panel */
+        .events-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 350px;
+            max-height: 90vh;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            overflow: hidden;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .events-header {
+            padding: 15px;
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .events-header:hover {
+            background-color: #2980b9;
+        }
+
+        .collapse-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+            display: block;
+        }
+
+        .events-panel.collapsed .collapse-icon {
+            transform: rotate(180deg);
+        }
+
+        .events-panel.collapsed .filters-panel,
+        .events-panel.collapsed .events-count,
+        .events-panel.collapsed .events-list {
+            display: none;
+        }
+
+        .events-panel.collapsed {
+            max-height: auto;
+        }
+
+        .events-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 200px;
+        }
+
+        .event-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .event-item.OUT_OF_BOUND {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .event-item.STOP_LONG {
+            border-left: 4px solid #f39c12;
+        }
+
+        .event-item.SPEEDING {
+            border-left: 4px solid #e67e22;
+        }
+
+        .event-time {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            margin-bottom: 3px;
+        }
+
+        .event-type {
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-bottom: 3px;
+        }
+
+        .event-detail {
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #bdc3c7;
+        }
+
+        /* Custom Leaflet Popup */
+        .unit-popup {
+            min-width: 200px;
+        }
+
+        .popup-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .popup-info {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .popup-info strong {
+            color: #555;
+        }
+
+        /* Filters Panel */
+        .filters-panel {
+            padding: 15px;
+            background-color: #34495e;
+            border-bottom: 1px solid #2c3e50;
+            flex-shrink: 0;
+        }
+
+        .filters-header {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ecf0f1;
+        }
+
+        .filter-group {
+            margin-bottom: 10px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: #bdc3c7;
+            margin-bottom: 5px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #1abc9c;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .btn-primary {
+            background-color: #1abc9c;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #7f8c8d;
+            color: white;
+        }
+
+        .events-count {
+            font-size: 0.8rem;
+            color: #555;
+            padding: 8px 15px;
+            background-color: #ecf0f1;
+            border-bottom: 1px solid #bdc3c7;
+            flex-shrink: 0;
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN - MEDIA QUERIES
+           ============================================ */
+
+        /* Tablets (768px - 1024px) */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 300px;
+            }
+
+            .events-panel {
+                width: 320px;
+                max-height: 85vh;
+            }
+
+            .sidebar-header h1 {
+                font-size: 1.2rem;
+            }
+
+            .unit-id {
+                font-size: 1rem;
+            }
+        }
+
+        /* Mobile Landscape & Small Tablets (481px - 767px) */
+        @media (max-width: 767px) {
+            /* Mostrar botón de menú hamburguesa */
+            .menu-toggle {
+                display: block;
+            }
+
+            /* Sidebar como overlay deslizante */
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 280px;
+                z-index: 1500;
+                transform: translateX(-100%);
+                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            /* Overlay oscuro cuando sidebar está abierto */
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+                z-index: 1400;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            /* Mapa ocupa todo el espacio */
+            .map-container {
+                width: 100%;
+            }
+
+            /* Panel de eventos más pequeño y en la esquina */
+            .events-panel {
+                width: calc(100vw - 20px);
+                max-width: 380px;
+                max-height: 60vh;
+                top: auto;
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .events-header {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+
+            .filters-panel {
+                padding: 12px;
+            }
+
+            .filter-group {
+                margin-bottom: 8px;
+            }
+
+            .filter-group label {
+                font-size: 0.75rem;
+            }
+
+            .filter-group select,
+            .filter-group input {
+                padding: 5px;
+                font-size: 0.8rem;
+            }
+
+            .event-item {
+                padding: 10px 12px;
+            }
+
+            .event-time {
+                font-size: 0.7rem;
+            }
+
+            .event-type {
+                font-size: 0.8rem;
+            }
+
+            .event-detail {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Mobile Portrait (< 480px) */
+        @media (max-width: 480px) {
+            .menu-toggle {
+                padding: 10px 12px;
+                font-size: 1.3rem;
+                top: 10px;
+                left: 10px;
+            }
+
+            .sidebar {
+                width: 90vw;
+                max-width: 300px;
+            }
+
+            .sidebar-header h1 {
+                font-size: 1.1rem;
+            }
+
+            .sidebar-header p {
+                font-size: 0.8rem;
+            }
+
+            .unit-item {
+                padding: 12px 15px;
+            }
+
+            .unit-id {
+                font-size: 0.95rem;
+            }
+
+            .unit-info {
+                font-size: 0.8rem;
+            }
+
+            .unit-status {
+                font-size: 0.7rem;
+                padding: 2px 6px;
+            }
+
+            /* Panel de eventos adaptado para móviles pequeños */
+            .events-panel {
+                width: calc(100vw - 10px);
+                max-width: 100%;
+                max-height: 50vh;
+                bottom: 5px;
+                right: 5px;
+                left: 5px;
+                border-radius: 6px;
+            }
+
+            .events-header {
+                padding: 10px;
+                font-size: 0.85rem;
+            }
+
+            .filters-panel {
+                padding: 10px;
+            }
+
+            .filters-header {
+                font-size: 0.85rem;
+                margin-bottom: 8px;
+            }
+
+            .filter-buttons {
+                gap: 6px;
+                margin-top: 8px;
+            }
+
+            .btn {
+                padding: 7px;
+                font-size: 0.8rem;
+            }
+
+            .events-count {
+                font-size: 0.75rem;
+                padding: 6px 10px;
+            }
+
+            .events-list {
+                min-height: 150px;
+            }
+
+            .event-item {
+                padding: 8px 10px;
+            }
+        }
+
+        /* Very Small Devices (< 360px) */
+        @media (max-width: 360px) {
+            .sidebar-header h1 {
+                font-size: 1rem;
+            }
+
+            .events-panel {
+                max-height: 45vh;
+            }
+
+            .filter-group label {
+                font-size: 0.7rem;
+            }
+
+            .btn {
+                font-size: 0.75rem;
+                padding: 6px;
+            }
+        }
+
+        /* Landscape mode en móviles */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .events-panel {
+                max-height: 80vh;
+                width: 300px;
+            }
+
+            .sidebar {
+                width: 260px;
+            }
+
+            .unit-item {
+                padding: 8px 12px;
+            }
+        }
+
+        /* ============================================
+           CHATBOT STYLES
+           ============================================ */
+
+        /* Botón flotante del chatbot */
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            z-index: 1100;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .chatbot-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .chatbot-toggle.open {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        /* Contador de mensajes no leídos */
+        .chatbot-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .chatbot-badge.hidden {
+            display: none;
+        }
+
+        /* Ventana del chatbot */
+        .chatbot-window {
+            position: fixed;
+            bottom: 90px;
+            left: 20px;
+            width: 380px;
+            height: 550px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 1100;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-window.open {
+            display: flex;
+        }
+
+        /* Header del chatbot */
+        .chatbot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .chatbot-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chatbot-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .chatbot-title {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chatbot-title h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .chatbot-title p {
+            margin: 0;
+            font-size: 0.75rem;
+            opacity: 0.9;
+        }
+
+        .chatbot-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            line-height: 1;
+            transition: opacity 0.2s;
+        }
+
+        .chatbot-close:hover {
+            opacity: 0.7;
+        }
+
+        /* Área de mensajes */
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Burbuja de mensaje */
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            animation: messageSlideIn 0.3s ease;
+            line-height: 1.5;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background-color: #667eea;
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: #e9ecef;
+            color: #2c3e50;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message strong {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        /* Indicador de escritura */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            background-color: #667eea;
+            padding: 12px 16px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: white;
+            margin: 0 2px;
+            animation: typingDot 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingDot {
+            0%, 60%, 100% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: translateY(-8px);
+            }
+        }
+
+        /* Input del chatbot */
+        .chatbot-input-area {
+            padding: 15px;
+            background-color: white;
+            border-top: 1px solid #dee2e6;
+            flex-shrink: 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chatbot-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        .chatbot-input:focus {
+            border-color: #667eea;
+        }
+
+        .chatbot-send {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chatbot-send:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .chatbot-send:active {
+            transform: scale(0.95);
+        }
+
+        .chatbot-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Sugerencias rápidas */
+        .quick-suggestions {
+            display: flex;
+            gap: 8px;
+            padding: 0 15px 15px 15px;
+            background-color: white;
+            flex-wrap: wrap;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .quick-suggestion {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 16px;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #495057;
+        }
+
+        .quick-suggestion:hover {
+            background-color: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .quick-suggestion-clear {
+            background-color: #fee;
+            border-color: #fcc;
+            color: #c33;
+        }
+
+        .quick-suggestion-clear:hover {
+            background-color: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+        }
+
+        /* RESPONSIVE CHATBOT */
+        @media (max-width: 767px) {
+            .chatbot-toggle {
+                bottom: 15px;
+                left: 15px;
+                width: 55px;
+                height: 55px;
+                font-size: 1.6rem;
+            }
+
+            .chatbot-window {
+                bottom: 80px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                max-width: 500px;
+                height: 500px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chatbot-window {
+                bottom: 75px;
+                left: 5px;
+                right: 5px;
+                height: 450px;
+            }
+
+            .chatbot-header {
+                padding: 15px;
+            }
+
+            .chatbot-title h3 {
+                font-size: 1rem;
+            }
+
+            .chatbot-messages {
+                padding: 15px;
+            }
+
+            .message {
+                font-size: 0.9rem;
+                padding: 10px 14px;
+            }
+
+            .quick-suggestion {
+                font-size: 0.8rem;
+                padding: 5px 12px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .chatbot-window {
+                height: 400px;
+            }
+
+            .chatbot-input {
+                font-size: 0.9rem;
+                padding: 10px 14px;
+            }
+
+            .chatbot-send {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Landscape mode para chatbot */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .chatbot-window {
+                height: 85vh;
+                bottom: 60px;
+            }
+        }
+
+        /* ============================================
+           ANIMACIONES PARA MARCADORES RESALTADOS
+           ============================================ */
+
+        /* Animación de pulse para marcadores destacados */
+        @keyframes markerPulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .highlighted-marker {
+            animation: markerPulse 1.5s ease-in-out 3;
+        }
+
+        /* Estilos para marcadores resaltados en el mapa */
+        .poi-marker-highlighted {
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+            z-index: 1000 !important;
+        }
+
+        /* Popup mejorado para POIs resaltados */
+        .poi-popup-highlighted {
+            border-top: 3px solid #FFD700;
+        }
+
+        .popup-footer {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .popup-footer small {
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <!-- Botón de menú hamburguesa (solo visible en móviles) -->
+    <button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu">
+        ☰
+    </button>
+
+    <!-- Overlay oscuro para cerrar sidebar en móviles -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>🚍 Monitor de Transporte</h1>
+                <p>Sistema de Seguimiento en Tiempo Real</p>
+            </div>
+
+            <div class="connection-status">
+                <div class="status-dot" id="ws-status-dot"></div>
+                <span id="ws-status-text">Desconectado</span>
+            </div>
+
+            <div class="units-list" id="units-list">
+                <div class="loading">Cargando unidades...</div>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="map-container">
+            <div id="map"></div>
+
+            <!-- Events Panel -->
+            <div class="events-panel" id="events-panel">
+                <div class="events-header" id="events-header">
+                    <span>📋 Eventos Recientes</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters-panel">
+                    <div class="filters-header">🔍 Filtros</div>
+
+                    <div class="filter-group">
+                        <label for="filter-unit">Unidad:</label>
+                        <select id="filter-unit">
+                            <option value="">Todas las unidades</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-type">Tipo de Evento:</label>
+                        <select id="filter-type">
+                            <option value="">Todos los tipos</option>
+                            <option value="OUT_OF_BOUND">🚨 Fuera de Ruta</option>
+                            <option value="STOP_LONG">⏸️ Detención Prolongada</option>
+                            <option value="SPEEDING">⚡ Exceso de Velocidad</option>
+                            <option value="GENERAL_ALERT">⚠️ Alerta General</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-limit">Cantidad:</label>
+                        <select id="filter-limit">
+                            <option value="20">20 eventos</option>
+                            <option value="50">50 eventos</option>
+                            <option value="100">100 eventos</option>
+                            <option value="200">200 eventos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-buttons">
+                        <button class="btn btn-primary" onclick="applyFilters()">Aplicar</button>
+                        <button class="btn btn-secondary" onclick="clearFilters()">Limpiar</button>
+                    </div>
+                </div>
+
+                <div class="events-count" id="events-count">
+                    Cargando eventos...
+                </div>
+
+                <div class="events-list" id="events-list">
+                    <div class="loading">Sin eventos</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Widget -->
+    <button class="chatbot-toggle" id="chatbot-toggle" aria-label="Abrir asistente">
+        💬
+        <span class="chatbot-badge hidden" id="chatbot-badge">0</span>
+    </button>
+
+    <div class="chatbot-window" id="chatbot-window">
+        <div class="chatbot-header">
+            <div class="chatbot-header-info">
+                <div class="chatbot-avatar">🤖</div>
+                <div class="chatbot-title">
+                    <h3>Asistente Virtual</h3>
+                    <p id="chatbot-status">Conectando...</p>
+                </div>
+            </div>
+            <button class="chatbot-close" id="chatbot-close" aria-label="Cerrar chatbot">✕</button>
+        </div>
+
+        <div class="chatbot-messages" id="chatbot-messages">
+            <!-- Los mensajes se agregarán aquí dinámicamente -->
+        </div>
+
+        <div class="typing-indicator" id="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <div class="quick-suggestions" id="quick-suggestions">
+            <button class="quick-suggestion" onclick="sendQuickMessage('Hospitales cercanos')">🏥 Hospitales</button>
+            <button class="quick-suggestion" onclick="sendQuickMessage('Farmacias cerca')">💊 Farmacias</button>
+            <button class="quick-suggestion" onclick="sendQuickMessage('Bancos próximos')">🏦 Bancos</button>
+            <button class="quick-suggestion" onclick="sendQuickMessage('¿Qué categorías hay?')">📋 Categorías</button>
+            <button class="quick-suggestion quick-suggestion-clear" onclick="clearMapHighlights()">✕ Limpiar mapa</button>
+        </div>
+
+        <div class="chatbot-input-area">
+            <input
+                type="text"
+                class="chatbot-input"
+                id="chatbot-input"
+                placeholder="Escribe tu pregunta..."
+                maxlength="500"
+            />
+            <button class="chatbot-send" id="chatbot-send" aria-label="Enviar mensaje">
+                ➤
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Application Script -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

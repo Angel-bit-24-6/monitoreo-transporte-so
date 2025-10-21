@@ -1,0 +1,17 @@
+{
+  "name": "transporte-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard de monitoreo de transporte",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

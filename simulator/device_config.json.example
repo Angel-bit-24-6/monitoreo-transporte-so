@@ -1,0 +1,28 @@
+{
+  "devices": [
+    {
+      "unidad_id": "UNIT-001",
+      "device_id": "GPS-DEVICE-001",
+      "token": "YOUR_TOKEN_HERE_1",
+      "token_expires_at": null,
+      "last_renewal": null
+    },
+    {
+      "unidad_id": "UNIT-002",
+      "device_id": "GPS-DEVICE-002",
+      "token": "YOUR_TOKEN_HERE_2",
+      "token_expires_at": null,
+      "last_renewal": null
+    },
+    {
+      "unidad_id": "UNIT-003",
+      "device_id": "GPS-DEVICE-003",
+      "token": "YOUR_TOKEN_HERE_3",
+      "token_expires_at": null,
+      "last_renewal": null
+    }
+  ],
+  "server_url": "ws://localhost:8000/ws/device",
+  "auto_renewal_enabled": true,
+  "renewal_threshold_minutes": 7
+}
