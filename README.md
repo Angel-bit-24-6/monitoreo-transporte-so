@@ -7,7 +7,7 @@
 🌎 **Audio contextual ODS 11 - México:**
 
 <audio controls>
-  <source src="frontend/public/audio/ods11_intro_mexico.mp3" type="audio/mp3">
+  <source src="frontend/public/audio/ODS11_Ciudades_AnalisisMéxico.mp3" type="audio/mp3">
   Tu navegador no soporta el elemento de audio.
 </audio>
 
@@ -58,7 +58,7 @@ Para información técnica profunda, consulta:
 
 ---
 
-## ✨ Características
+## Características
 
 ### Funcionalidades Principales
 
@@ -105,7 +105,7 @@ Para información técnica profunda, consulta:
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```
 ┌─────────────────┐          ┌──────────────────┐          ┌─────────────────┐
@@ -142,7 +142,7 @@ Para información técnica profunda, consulta:
 
 ---
 
-## 🛠️ Tecnologías
+## Tecnologías
 
 ### Backend
 - **Python 3.11+**
@@ -169,7 +169,7 @@ Para información técnica profunda, consulta:
 
 ---
 
-## 📦 Requisitos
+## Requisitos
 
 ### 💻 Sistema Operativo
 
@@ -194,7 +194,7 @@ Este proyecto funciona en **Windows, Linux y macOS**.
 
 ---
 
-## 🚀 Instalación
+## Instalación
 
 ### ⚡ Instalación Rápida por Sistema Operativo
 
@@ -335,7 +335,7 @@ python gps_simulator_with_renewal.py -i 5
 
 ---
 
-## ⚙️ Configuración
+## Configuración
 
 ### Variables de Entorno (Backend)
 
@@ -378,7 +378,7 @@ STOP_TIME_THRESHOLD_S=120
 
 ---
 
-## 💻 Uso
+## Uso
 
 ### ✅ Datos Precargados
 
@@ -493,7 +493,7 @@ Para más opciones, consulta la [documentación de API REST](#api-rest) o usa Sw
 
 ---
 
-## 📡 API REST
+## API REST
 
 ### Documentación Interactiva
 
@@ -538,7 +538,7 @@ Para más opciones, consulta la [documentación de API REST](#api-rest) o usa Sw
 
 ---
 
-## 🔌 Protocolo WebSocket
+## Protocolo WebSocket
 
 ### Endpoint Dispositivos: `ws://localhost:8000/ws/device`
 
@@ -664,7 +664,7 @@ Para más opciones, consulta la [documentación de API REST](#api-rest) o usa Sw
 
 ---
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 version_web/
@@ -725,7 +725,7 @@ version_web/
 
 ---
 
-## 🔧 Desarrollo
+## Desarrollo
 
 ### Ejecutar Tests
 
