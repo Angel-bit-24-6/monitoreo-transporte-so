@@ -7,7 +7,7 @@
 🌎 **Audio contextual ODS 11 - México:**
 
 <audio controls>
-  <source src="frontend/public/audio/ODS11_Ciudades_AnalisisMéxico.mp3" type="audio/mp3">
+  <source src="https://github.com/Angel-bit-24-6/monitoreo-transporte-so/raw/refs/heads/main/frontend/public/audio/ODS11_Ciudades_AnalisisM%C3%A9xico.mp3" type="audio/mp3">
   Tu navegador no soporta el elemento de audio.
 </audio>
 
