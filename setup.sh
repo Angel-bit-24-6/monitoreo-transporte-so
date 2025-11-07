@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script de setup automatizado para Sistema de Monitoreo de Transporte
-# Compatible con: Ubuntu 20.04+, Debian 11+
+# Compatible con: Ubuntu 20.04+, Debian 11+, Arch Linux
 
 set -e
 
@@ -29,6 +29,26 @@ print_info() {
     echo -e "${YELLOW}ℹ${NC} $1"
 }
 
+# Detectar distribución
+detect_distro() {
+    if [ -f /etc/arch-release ]; then
+        echo "arch"
+    elif [ -f /etc/debian_version ]; then
+        echo "debian"
+    elif [ -f /etc/os-release ]; then
+        . /etc/os-release
+        if [[ "$ID" == "ubuntu" ]] || [[ "$ID" == "debian" ]]; then
+            echo "debian"
+        else
+            echo "unknown"
+        fi
+    else
+        echo "unknown"
+    fi
+}
+
+DISTRO=$(detect_distro)
+
 # Verificar si se ejecuta como root
 if [[ $EUID -ne 0 ]]; then
    print_error "Este script debe ejecutarse como root (sudo)"
@@ -36,31 +56,62 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 echo "1. Actualizando sistema..."
-apt update -qq
-apt upgrade -y -qq
-print_success "Sistema actualizado"
+if [ "$DISTRO" == "arch" ]; then
+    pacman -Syu --noconfirm --quiet
+    print_success "Sistema actualizado (Arch Linux)"
+else
+    apt update -qq
+    apt upgrade -y -qq
+    print_success "Sistema actualizado (Debian/Ubuntu)"
+fi
 
 echo ""
 echo "2. Instalando dependencias del sistema..."
-apt install -y -qq \
-    python3.11 \
-    python3.11-venv \
-    python3-pip \
-    postgresql-14 \
-    postgresql-14-postgis-3 \
-    postgresql-contrib \
-    nodejs \
-    npm \
-    git \
-    curl \
-    wget
-
-print_success "Dependencias instaladas"
+if [ "$DISTRO" == "arch" ]; then
+    pacman -S --needed --noconfirm \
+        postgresql \
+        postgis \
+        python \
+        python-pip \
+        nodejs \
+        npm \
+        git \
+        curl \
+        wget \
+        base-devel
+    PYTHON_CMD="python"
+    print_success "Dependencias instaladas (Arch Linux)"
+else
+    apt install -y -qq \
+        python3.11 \
+        python3.11-venv \
+        python3-pip \
+        postgresql-14 \
+        postgresql-14-postgis-3 \
+        postgresql-contrib \
+        nodejs \
+        npm \
+        git \
+        curl \
+        wget
+    PYTHON_CMD="python3.11"
+    print_success "Dependencias instaladas (Debian/Ubuntu)"
+fi
 
 echo ""
 echo "3. Configurando PostgreSQL..."
 systemctl start postgresql
 systemctl enable postgresql
+
+# En Arch Linux, puede ser necesario inicializar PostgreSQL
+if [ "$DISTRO" == "arch" ]; then
+    if [ ! -d /var/lib/postgres/data ]; then
+        print_info "Inicializando base de datos PostgreSQL..."
+        sudo -u postgres initdb -D /var/lib/postgres/data
+        systemctl restart postgresql
+        sleep 2
+    fi
+fi
 
 # Generar password seguro
 DB_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 20)
@@ -100,15 +151,22 @@ echo ""
 echo "5. Configurando Backend..."
 cd backend
 
-# Crear usuario del sistema
-if ! id "appuser" &>/dev/null; then
-    useradd -m -s /bin/bash appuser
-    print_success "Usuario del sistema creado: appuser"
+# Obtener usuario actual (no root)
+CURRENT_USER=${SUDO_USER:-$USER}
+if [ "$CURRENT_USER" == "root" ]; then
+    # Si se ejecuta como root directamente, usar el primer usuario no-root
+    CURRENT_USER=$(ls /home | head -n1)
+    if [ -z "$CURRENT_USER" ]; then
+        print_error "No se pudo determinar el usuario. Ejecuta con sudo desde tu usuario."
+        exit 1
+    fi
 fi
 
+print_info "Usando usuario: $CURRENT_USER"
+
 # Setup virtual environment
-sudo -u appuser python3.11 -m venv venv
-sudo -u appuser bash -c "source venv/bin/activate && pip install --upgrade pip -q && pip install -r requirements.txt -q"
+sudo -u "$CURRENT_USER" $PYTHON_CMD -m venv venv
+sudo -u "$CURRENT_USER" bash -c "source venv/bin/activate && pip install --upgrade pip -q && pip install -r requirements.txt -q"
 print_success "Entorno virtual creado y dependencias instaladas"
 
 # Crear archivo .env solo si NO existe
@@ -146,7 +204,7 @@ STOP_TIME_THRESHOLD_S=120
 SPEED_LIMIT_MS=22.22
 EOF
 chmod 600 .env
-chown appuser:appuser .env
+chown "$CURRENT_USER:$CURRENT_USER" .env
 print_success "Archivo .env creado automáticamente"
 else
 print_info "Archivo .env ya existe, no se reemplaza"
@@ -176,7 +234,7 @@ Requires=postgresql.service
 
 [Service]
 Type=simple
-User=appuser
+User=$CURRENT_USER
 WorkingDirectory=$(pwd)/backend
 Environment="PATH=$(pwd)/backend/venv/bin"
 ExecStart=$(pwd)/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -324,10 +382,10 @@ echo "   http://localhost:5173"
 echo ""
 echo "3. Iniciar simulador (en otra terminal):"
 echo "   cd simulator"
-echo "   python3 -m venv venv"
+echo "   $PYTHON_CMD -m venv venv"
 echo "   source venv/bin/activate"
 echo "   pip install -r requirements.txt"
-echo "   python3 gps_simulator_with_renewal.py -i 5"
+echo "   $PYTHON_CMD gps_simulator_with_renewal.py -i 5"
 echo ""
 echo "4. Ver en el dashboard el movimiento de las unidades"
 echo ""

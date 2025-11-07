@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos personalizados que complementan Tailwind */
+@layer components {
+  .custom-bus-icon {
+    @apply relative;
+  }
+  
+  .poi-icon {
+    @apply relative;
+  }
+}
+

@@ -2,6 +2,9 @@
  * Dashboard principal - Sistema de Monitoreo de Transporte
  */
 
+// Importar Tailwind CSS
+import './input.css';
+
 const API_BASE = 'http://localhost:8000/api/v1';
 const WS_URL = 'ws://localhost:8000/ws/dashboard';
 const CHATBOT_WS_URL = 'ws://localhost:8000/ws/chatbot';
