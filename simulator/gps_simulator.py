@@ -339,20 +339,21 @@ async def run_simulator(
     print(f"Simulación de eventos: {'Sí' if simulate_events else 'No'}")
     print(f"=====================================\n")
 
-    # INSTRUCCIONES: Antes de ejecutar, crea tokens usando la API:
-    # curl -X POST http://localhost:8000/api/v1/tokens \
-    #   -H "Content-Type: application/json" \
-    #   -d '{"unidad_id":"UNIT-001","device_id":"GPS-SIM-001","ttl_seconds":86400}'
+    # Cargar configuración desde device_config.json
+    config_manager = DeviceConfigManager()
+    config_devices = config_manager.config_data.get("devices", [])
+    
+    if not config_devices:
+        print("⚠️  No se encontraron dispositivos en device_config.json")
+        print("   Por favor, crea tokens usando la API:")
+        print("   curl -X POST http://localhost:8000/api/v1/tokens \\")
+        print("     -H 'Content-Type: application/json' \\")
+        print("     -d '{\"unidad_id\":\"UNIT-001\",\"device_id\":\"GPS-DEVICE-001\",\"ttl_seconds\":2592000}'")
+        return
 
-    # Tokens de ejemplo (REEMPLAZAR con tokens reales)
-    example_configs = [
-        {"unidad_id": "UNIT-001", "device_id": "GPS-SIM-001", "token": "69fd24428c5a82fa071aec2b07361dd0ec6e3c0085c1577344533d2de59d6fce"},
-        {"unidad_id": "UNIT-002", "device_id": "GPS-SIM-002", "token": "f46d48a4f86c9537631132bb3884ccef7b92f7be297ce5d6b64700f82e843f7d"},
-        {"unidad_id": "UNIT-003", "device_id": "GPS-SIM-003", "token": "1f0ac2f4b18f926bbb71dac37011b518dc7d24e1d0e353440f8e584b44d21367"},
-    ]
-
-    for i in range(min(num_devices, len(example_configs))):
-        config = example_configs[i]
+    # Usar configuración del archivo
+    for i in range(min(num_devices, len(config_devices))):
+        config = config_devices[i]
         route = routes[i % len(routes)]
 
         device = GPSDevice(
@@ -360,7 +361,7 @@ async def run_simulator(
             device_id=config["device_id"],
             token=config["token"],
             route=route,
-            server_url=server_url,
+            server_url=server_url or config_manager.config_data.get("server_url", "ws://localhost:8000/ws/device"),
             interval=interval,
             simulate_events=simulate_events,
         )
