@@ -4,6 +4,12 @@
 @layer components {
   .custom-bus-icon {
     @apply relative;
+    /* Permitir que los estilos inline funcionen */
+    pointer-events: none;
+  }
+  
+  .custom-bus-icon > div {
+    pointer-events: none;
   }
   
   .poi-icon {
@@ -179,6 +185,18 @@ body {
   transition: background 0.3s;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
-}
+       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+         background: rgba(148, 163, 184, 0.7);
+       }
+
+       /* Animación para iconos de autobús */
+       @keyframes busPulse {
+         0%, 100% {
+           opacity: 1;
+           transform: scale(1);
+         }
+         50% {
+           opacity: 0.7;
+           transform: scale(1.1);
+         }
+       }

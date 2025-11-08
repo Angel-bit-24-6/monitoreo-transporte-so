@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import MapContainer from './components/MapContainer'
 import EventsPanel from './components/EventsPanel'
 import Chatbot from './components/Chatbot'
+import WebSocketMonitor from './components/WebSocketMonitor'
 import { AppProvider } from './context/AppContext'
 import './input.css'
 
@@ -63,6 +64,7 @@ function App() {
           <EventsPanel />
         </MapContainer>
         <Chatbot />
+        <WebSocketMonitor />
       </div>
     </AppProvider>
   )

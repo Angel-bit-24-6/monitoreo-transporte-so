@@ -5,6 +5,44 @@ export const useWebSocket = () => {
   const { ws, setWs, wsConnected, setWsConnected, units, setUnits, setEvents, map, markersRef } = useApp()
   const reconnectTimeoutRef = useRef(null)
 
+  // Función helper para crear icono SVG premium
+  const createPremiumBusIcon = useCallback((isOnline) => {
+    const color = isOnline ? '#10b981' : '#ef4444'
+    const borderColor = isOnline ? '#34d399' : '#f87171'
+    const darkColor = isOnline ? '#059669' : '#dc2626'
+    const pulseAnim = isOnline ? 'busPulse 2s infinite' : 'none'
+    
+    // Crear un ID único para evitar conflictos de estilos
+    const iconId = `bus-icon-${isOnline ? 'online' : 'offline'}-${Date.now()}`
+    
+    const busIconSVG = `
+      <div class="custom-bus-icon-wrapper" style="position: relative; width: 40px; height: 40px; z-index: 1000;">
+        <div style="position: absolute; inset: -4px; background: radial-gradient(circle, ${color}40 0%, transparent 70%); border-radius: 50%; animation: ${pulseAnim};"></div>
+        <div style="position: absolute; inset: 0; background: linear-gradient(135deg, ${color} 0%, ${darkColor} 100%); border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 2px ${borderColor}40, inset 0 1px 0 rgba(255,255,255,0.3);"></div>
+        <svg style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); pointer-events: none;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="6" width="18" height="10" rx="1.5" fill="white" opacity="0.95"/>
+          <rect x="5" y="8" width="3" height="2.5" rx="0.5" fill="${color}" opacity="0.3"/>
+          <rect x="9.5" y="8" width="3" height="2.5" rx="0.5" fill="${color}" opacity="0.3"/>
+          <rect x="14" y="8" width="3" height="2.5" rx="0.5" fill="${color}" opacity="0.3"/>
+          <circle cx="7" cy="17" r="2.5" fill="white" opacity="0.9"/>
+          <circle cx="17" cy="17" r="2.5" fill="white" opacity="0.9"/>
+          <circle cx="7" cy="17" r="1.5" fill="${color}" opacity="0.4"/>
+          <circle cx="17" cy="17" r="1.5" fill="${color}" opacity="0.4"/>
+          <line x1="3" y1="11" x2="21" y2="11" stroke="${color}" stroke-width="1.5" opacity="0.4"/>
+        </svg>
+        <div style="position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; background: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px ${borderColor}40, 0 0 8px ${color}80; animation: ${pulseAnim};"></div>
+      </div>
+    `
+    
+    return L.divIcon({
+      className: 'custom-bus-icon',
+      html: busIconSVG,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -20],
+    })
+  }, [])
+
   // Función para manejar actualizaciones de posición
   const handlePositionUpdate = useCallback((data) => {
     const { unidad_id, lat, lon, speed, heading, timestamp } = data
@@ -37,9 +75,15 @@ export const useWebSocket = () => {
 
       // Actualizar o crear marcador en el mapa (usar el estado actualizado)
       if (map && typeof L !== 'undefined') {
+        const isOnline = unit?.is_connected !== false
+        
         if (markersRef.current[unidad_id]) {
           // Actualizar posición del marcador existente
           markersRef.current[unidad_id].setLatLng([lat, lon])
+          
+          // Actualizar icono con el estado actual
+          const newIcon = createPremiumBusIcon(isOnline)
+          markersRef.current[unidad_id].setIcon(newIcon)
           
           // Actualizar popup con nueva velocidad
           const popupContent = `
@@ -55,19 +99,10 @@ export const useWebSocket = () => {
           `
           markersRef.current[unidad_id].setPopupContent(popupContent)
         } else {
-          // Crear nuevo marcador (igual que en main.js)
-          const isOnline = unit?.is_connected !== false
-          const color = isOnline ? '#2ecc71' : '#e74c3c'
-          
+          // Crear nuevo marcador con icono SVG premium
           console.log(`🎯 Creando marcador para ${unidad_id} en [${lat}, ${lon}], mapa disponible:`, !!map)
           
-          const icon = L.divIcon({
-            className: 'custom-bus-icon',
-            html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 16px;">🚍</div>`,
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-          })
-
+          const icon = createPremiumBusIcon(isOnline)
           const marker = L.marker([lat, lon], { icon }).addTo(map)
           
           const popupContent = `
@@ -91,7 +126,7 @@ export const useWebSocket = () => {
 
       return updated
     })
-  }, [map, markersRef, setUnits])
+  }, [map, markersRef, setUnits, createPremiumBusIcon])
 
   // Función para manejar alertas de eventos
   const handleEventAlert = useCallback((data) => {
@@ -132,18 +167,12 @@ export const useWebSocket = () => {
       return updated
     })
 
-    // Actualizar icono del marcador
+    // Actualizar icono del marcador con SVG premium
     if (map && typeof L !== 'undefined' && markersRef.current[unidad_id]) {
-      const color = is_connected ? '#2ecc71' : '#e74c3c'
-      const icon = L.divIcon({
-        className: 'custom-bus-icon',
-        html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 16px;">🚍</div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
-      })
-      markersRef.current[unidad_id].setIcon(icon)
+      const newIcon = createPremiumBusIcon(is_connected)
+      markersRef.current[unidad_id].setIcon(newIcon)
     }
-  }, [map, markersRef, setUnits])
+  }, [map, markersRef, setUnits, createPremiumBusIcon])
 
   // Función para manejar mensajes WebSocket
   const handleWebSocketMessage = useCallback((message) => {
